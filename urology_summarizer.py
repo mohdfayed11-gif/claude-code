@@ -12,6 +12,13 @@ Examples:
     python urology_summarizer.py chapter_01.txt --name "Surgical Anatomy of the Retroperitoneum"
     python urology_summarizer.py chapter_05.txt --output summaries/chapter_05_summary.md
     python urology_summarizer.py all_chapters/ --batch  # summarize all .txt files in a directory
+
+Each summary includes:
+  • Structured sections (anatomy, pathophysiology, staging, diagnostics, treatment, studies)
+  • Inline highlights: 🔴 CRITICAL  ⚡ HIGH-YIELD  💡 PEARL  ⚠️ PITFALL  📐 KEY NUMBER
+  • Reconstructed tables in Markdown format
+  • ASCII flowcharts / diagrams for algorithms and anatomical relationships
+  • Landmark studies table and rapid-review bullet list
 """
 
 import anthropic
@@ -29,6 +36,36 @@ Your summaries must be EXECUTIVE yet COMPREHENSIVE — capturing every clinicall
 significant concept while remaining structured for efficient study. Do not oversimplify or omit \
 data; PhD-level readers need specifics.
 
+HIGHLIGHT CALLOUTS
+Throughout every section, call out important points as Markdown blockquotes using these exact \
+labels and emoji, formatted as `> {emoji} **{LABEL}:** <text>`:
+  - 🔴 **CRITICAL:** can't-miss, safety-critical, or exam-defining facts
+  - ⚡ **HIGH-YIELD:** frequently tested or clinically pivotal facts
+  - 💡 **PEARL:** practical clinical wisdom or distinguishing insight
+  - ⚠️ **PITFALL:** common errors, traps, or misconceptions
+  - 📐 **KEY NUMBER:** specific measurements, cutoffs, doses, or statistics
+Use 20–40 such callouts spread across all sections — not clustered in one place.
+
+TABLES
+Reconstruct classification systems, staging criteria, drug comparisons, and landmark study data \
+as proper Markdown tables (with header row and alignment row) rather than prose, whenever the \
+source material presents tabular or comparative data.
+
+DIAGRAMS & FLOWCHARTS
+Recreate important anatomical relationships, diagnostic algorithms, and treatment pathways as \
+ASCII art diagrams inside ```text code blocks, using box-drawing characters (─ │ ┌ ┐ └ ┘ ├ ┤ ┬ ┴ ┼) \
+and arrows (→ ← ↑ ↓ ↔). Example:
+
+```text
+┌─────────────────┐     ┌─────────────────┐
+│  Finding A      │────▶│  Action B       │
+└─────────────────┘     └────────┬────────┘
+                                  │
+                         ┌────────▼────────┐
+                         │  Outcome C      │
+                         └─────────────────┘
+```
+
 Format each summary using exactly these sections:
 
 ## 📌 Chapter Overview
@@ -36,27 +73,33 @@ Brief orientation: what this chapter covers, why it matters, and its position in
 
 ## 🔬 Key Anatomical & Physiological Foundations
 Clinically relevant anatomy, embryology, and physiology with specific landmarks, measurements, \
-and functional relationships.
+and functional relationships. Use ASCII diagrams for spatial/anatomical relationships where helpful.
 
 ## ⚙️ Pathophysiology & Mechanisms
 Molecular, cellular, and systemic mechanisms of disease. Include biochemical pathways, \
-genetic factors, and pathological cascades.
+genetic factors, and pathological cascades. Use flowcharts for multi-step mechanisms.
 
 ## 📊 Classification Systems & Staging
 All classification schemas, staging systems, grading criteria, and risk stratification \
-tools with their specific criteria and clinical implications.
+tools with their specific criteria and clinical implications, reconstructed as tables.
+
+## 📐 Key Figures, Tables & Diagrams
+A dedicated collection of the chapter's most important reconstructed tables and ASCII diagrams \
+(anatomy schematics, staging tables, decision algorithms) not already placed elsewhere, each with \
+a short caption.
 
 ## 🔍 Diagnostic Approach
-Workup algorithms, imaging indications and findings, laboratory parameters with cutoffs, \
-biopsy techniques, and diagnostic criteria.
+Workup algorithms (as flowcharts), imaging indications and findings, laboratory parameters with \
+cutoffs, biopsy techniques, and diagnostic criteria.
 
 ## 💊 Treatment Principles & Evidence
 Medical therapies (mechanisms, dosing, side effects), surgical techniques (steps, key maneuvers, \
-pitfalls), and evidence-based decision-making. Include EAU/AUA guideline recommendations.
+pitfalls), and evidence-based decision-making. Include EAU/AUA guideline recommendations and \
+treatment-selection algorithms as diagrams.
 
 ## 📚 Landmark Studies & Key Data
 Named trials, pivotal publications, and their specific findings (survival rates, hazard ratios, \
-p-values). Include publication year and significance.
+p-values) as a comparison table. Include publication year and significance.
 
 ## 💡 Clinical Pearls & High-Yield Facts
 Exam-critical facts, mnemonics, distinguishing features, and "can't-miss" points that \
@@ -66,7 +109,8 @@ frequently appear in boards and qualifying exams.
 Current debates, emerging therapies, ongoing trials, and unresolved questions in the field.
 
 ## ✅ High-Yield Summary (Rapid Review)
-Bullet-point distillation of the 15–20 most important facts for quick pre-exam review.
+Bullet-point distillation of the 15–20 most important facts for quick pre-exam review, ending \
+with a compact Memory Aid table (e.g., mnemonic vs. meaning) if applicable.
 """
 
 
@@ -130,7 +174,7 @@ def summarize_chapter(
 
     with client.messages.stream(
         model="claude-opus-4-7",
-        max_tokens=8192,
+        max_tokens=16000,
         thinking={"type": "adaptive"},
         system=SYSTEM_PROMPT,
         messages=messages,
@@ -185,7 +229,9 @@ def summarize_chapter(
             f"# {chapter_name}\n\n"
             f"> **Source:** Campbell-Walsh Urology, 13th Edition  \n"
             f"> **Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M')}  \n"
-            f"> **Tokens:** {usage.input_tokens:,} in / {usage.output_tokens:,} out\n\n"
+            f"> **Tokens:** {usage.input_tokens:,} in / {usage.output_tokens:,} out  \n"
+            f"> **Highlights:** 🔴 CRITICAL &nbsp;⚡ HIGH-YIELD &nbsp;💡 PEARL "
+            f"&nbsp;⚠️ PITFALL &nbsp;📐 KEY NUMBER\n\n"
             f"---\n\n"
         )
         output_path.write_text(header + summary, encoding="utf-8")
